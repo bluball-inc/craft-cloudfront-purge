@@ -75,3 +75,12 @@
     value: settings.cfSuffix,
     errors: settings.getErrors('cfSuffix')
 }) }}
+
+{{ forms.lightswitchField({
+    label: "Prefix invalidation path with entry language"|t('aws-s3'),
+    instructions: "For multisite projects, enable this to prefix the Cloudfront invalidation path with the Entry language code on save (e.g. /en or /fr) "|t('aws-s3'),
+    id: 'prefixLanguage',
+    name: 'prefixLanguage',
+    on: settings.prefixLanguage,
+    errors: settings.getErrors('prefixLanguage')
+}) }}

@@ -111,10 +111,23 @@ class CloudFrontPurge extends Plugin
               && !$element->resaving // not during resaving (avoid batch resaving)
             ) {
               $uri = $element->uri;
+              $languagePrefix = $this->_getLanguagePrefix($element);
+            
               if ($uri === "__home__") $uri = "";
-              $path = '/' . $this->_cfPrefix() . ltrim($uri, '/') . $this->_cfSuffix();
-              Craft::info("Invalidating Entry path:" . $path);
-              $this->invalidateCdnPath($path);
+              $path = '/' . $this->_cfPrefix() . $languagePrefix . ltrim($uri, '/') . $this->_cfSuffix();
+              $path = $path != '/' ? rtrim($path, '/') : $path; // remove trailing slash if any
+              Craft::info("Invalidating Entry path: " . $path);
+
+              $pathsToInvalidate = [$path];
+
+              // If site is primary site, we might also need to invalidate the path without language prefix (/en/ -> /)
+              if ($this->_prefixLanguage() && $element->site->primary) {
+                $path = $uri !== "" ? str_replace($languagePrefix, '', $path) : '/';
+                Craft::info("Invalidating Entry path: " . $path);
+                $pathsToInvalidate[] = $path;
+              }    
+
+              $this->invalidateCdnPath(...$pathsToInvalidate);   
             }
             break;
           case $element instanceof \craft\elements\Category:
@@ -265,9 +278,10 @@ class CloudFrontPurge extends Plugin
   // =========================================================================
 
   /**
+   * @var string[] $path
    * @inheritdoc
    */
-  protected function invalidateCdnPath(string $path): bool
+  protected function invalidateCdnPath(string ...$paths): bool
   {
     $settings = $this->getSettings();
     if (!empty($settings->cfDistributionId)) {
@@ -281,8 +295,8 @@ class CloudFrontPurge extends Plugin
             'InvalidationBatch' => [
               'Paths' =>
               [
-                'Quantity' => 1,
-                'Items' => [$path]
+                'Quantity' => count($paths),
+                'Items' => $paths
               ],
               'CallerReference' => 'Craft-' . StringHelper::randomString(24)
             ]
@@ -366,6 +380,32 @@ class CloudFrontPurge extends Plugin
     $settings = $this->getSettings();
     if ($settings->cfSuffix && ($cfSuffix = trim(App::parseEnv($settings->cfSuffix))) !== '') {
       return $cfSuffix;
+    }
+    return '';
+  }
+
+  /**
+   * Returns the parsed prefixLanguage setting
+   *
+   * @return bool
+   */
+  private function _prefixLanguage(): bool
+  {
+    $settings = $this->getSettings();
+    return $settings->prefixLanguage || false;
+  }
+
+    /**
+   * Returns the entry language prefix if prefixLanguage setting is enabled
+   * else returns an empty string
+   *
+   * @return string
+   */
+  private function _getLanguagePrefix(\craft\elements\Entry $entry): string
+  {
+    if ($this->_prefixLanguage()) {
+      $languagePrefix = explode('-', $entry->site->language)[0];
+      return $languagePrefix . '/';
     }
     return '';
   }
