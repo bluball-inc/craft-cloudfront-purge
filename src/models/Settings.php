@@ -60,12 +60,12 @@ class Settings extends Model
     /**
      * @var string CloudFront Distribution Prefix
      */
-    public $cfSuffix = '';    
-    
+    public $cfSuffix = '';
+
     /**
      * @var bool Enable language prefixing
      */
-    public $prefixLanguage = false;
+    public $prefixLanguage = true;
 
     // Public Methods
     // =========================================================================
